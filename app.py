@@ -5,14 +5,43 @@ import pandas as pd
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
-st.write("Current working directory:", os.getcwd())
 
-df=pd.read_csv(r'C:\Users\LENOVO\OneDrive\Desktop\project\Car Sell Dataset.csv')
-
-model = joblib.load(r"C:\Users\LENOVO\OneDrive\Desktop\project\carsell_model.pkl")
-
-#print(df.head())
+# Set page configuration at the very beginning
 st.set_page_config(page_title="🚗 Car Price Predictor", layout="centered")
+
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Load data and model with error handling
+@st.cache_resource
+def load_model_and_data():
+    """Load model and data with caching for better performance"""
+    try:
+        csv_path = os.path.join(script_dir, 'Car Sell Dataset.csv')
+        model_path = os.path.join(script_dir, "carsell_model.pkl")
+        
+        # Try to load CSV
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+        else:
+            st.error(f"❌ Dataset not found at: {csv_path}")
+            st.stop()
+        
+        # Try to load model
+        if os.path.exists(model_path):
+            model = joblib.load(model_path)
+        else:
+            st.error(f"❌ Model file not found at: {model_path}")
+            st.stop()
+        
+        return df, model
+    except Exception as e:
+        st.error(f"❌ Error loading files: {str(e)}")
+        st.stop()
+
+# Load data and model
+df, model = load_model_and_data()
+
 st.title(" 🚗 Car Price Prediction")
 page=st.sidebar.radio("Choose View",["📊 Data Insights","about model","prediction"])
 
@@ -92,20 +121,24 @@ else:
 st.markdown("---")
 
 if st.button("Predict Price"): 
-    input_dict = {
-        "Brand":brand,
-        "Model Name":model_name,
-        "Model Variant": model_variant,
-        "Car Type":car_type,
-        "Owner":owner,
-        "Year": year,
-        "Fuel Type": fuel_type,
-        "Transmission": transmission,
-        "State":state,
-        "Accidental":accident,
-        "Kilometers":kms_driven       
-    }
-    # Transform and predict
-    input_df=pd.DataFrame([input_dict])
-    price = model.predict(input_df)
-    st.write(f" 💰 *Predicted Price*: ₹{price[0]:,.2f}")
+    try:
+        input_dict = {
+            "Brand":brand,
+            "Model Name":model_name,
+            "Model Variant": model_variant,
+            "Car Type":car_type,
+            "Owner":owner,
+            "Year": year,
+            "Fuel Type": fuel_type,
+            "Transmission": transmission,
+            "State":state,
+            "Accidental":accident,
+            "Kilometers":kms_driven       
+        }
+        # Transform and predict
+        input_df=pd.DataFrame([input_dict])
+        price = model.predict(input_df)
+        st.success(f" 💰 **Predicted Price**: ₹{price[0]:,.2f}")
+    except Exception as e:
+        st.error(f"❌ Error in prediction: {str(e)}")
+        st.info("Please ensure all inputs are correct and try again.")
